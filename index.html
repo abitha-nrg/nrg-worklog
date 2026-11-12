@@ -1,0 +1,165 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daily Work Log</title>
+<meta name="theme-color" content="#1F4E78">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Work Log">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  html, body { margin:0; height:100%; overflow:hidden; }
+  body { display:flex; flex-direction:column; box-sizing:border-box; padding-top:env(safe-area-inset-top,0px);
+    background:#f3f5f8; font-family:Arial,Helvetica,sans-serif; color:#1d2733; }
+  #top { position:fixed; top:0; left:0; right:0; height:env(safe-area-inset-top,0px); background:#1F4E78; z-index:2; }
+  #wrap { flex:1; min-height:0; }
+  iframe { width:100%; height:100%; border:0; display:block; }
+  #bar { display:flex; align-items:center; gap:10px; background:#fff; border-top:1px solid #d9dee5; font-size:13px;
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px)); }
+  #bar p { margin:0; flex:1; line-height:1.35; }
+  #bar .on { border:0; border-radius:6px; padding:9px 14px; font:inherit; font-weight:bold; background:#1F4E78; color:#fff; cursor:pointer; white-space:nowrap; }
+  #bar .x { border:0; background:none; color:#6b7684; font-size:18px; padding:4px 6px; cursor:pointer; }
+  #splash { position:fixed; inset:0; background:#1F4E78; color:#fff; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:14px; z-index:3; transition:opacity .3s; text-align:center; padding:24px; }
+  #splash img { width:88px; height:88px; border-radius:20px; }
+  #splash p { margin:0; font-size:14px; opacity:.85; }
+  #splash button { margin-top:6px; border:0; border-radius:6px; padding:10px 20px; font:inherit; font-weight:bold;
+    background:#fff; color:#1F4E78; cursor:pointer; }
+  .gone { opacity:0; pointer-events:none; }
+  .hidden { display:none !important; }
+  @media (prefers-reduced-motion: reduce) { #splash { transition:none; } }
+</style>
+</head>
+<body>
+<div id="top"></div>
+<div id="wrap"><iframe id="app" title="Daily Work Log" allow="clipboard-write"></iframe></div>
+<div id="bar" class="hidden">
+  <p id="barTxt"></p>
+  <button id="barOn" class="on" type="button">Turn on</button>
+  <button id="barX" class="x" type="button" aria-label="Not now">✕</button>
+</div>
+<div id="splash">
+  <img src="icon-192.png" alt="">
+  <p id="msg">Opening Daily Work Log…</p>
+  <button id="retry" class="hidden" type="button">Try again</button>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+<script>
+/* ===================== Paste your values here ===================== */
+const FORM_URL = 'https://script.google.com/macros/s/AKfycbxU8X_C1h2hSuYiP3Af9PdgVMNSaVc8mazZhTrR6vPPIDiZsTvNV5tWblXUJ9DYiosG/exec';          // Apps Script /exec URL
+const FIREBASE = {                                    // Firebase > Project settings > Your apps > Config
+  apiKey: 'AIzaSyDmkh8ZNOHQZHB1xTRrgc2rRiWz0sJ-ZtI', authDomain: 'nrg-work-log.firebaseapp.com', projectId: 'nrg-work-log',
+  messagingSenderId: '335075031085', appId: '1:335075031085:web:90245bd74cb8cf6d37a0a4'
+};
+const VAPID_KEY = 'BDRf08BCRVwvXyKUAWEhN0y4BSQHJQvt1kHEID_GM_kVDRYKV8IwMXV6OKA-QVy6MuuqK16cH2032AT5VEff2Ww';                            // Firebase > Cloud Messaging > Web Push certificates
+/* ================================================================== */
+
+const $ = id => document.getElementById(id);
+const frame = $('app'), splash = $('splash'), msg = $('msg'), retry = $('retry');
+let hiddenAt = 0, timer;
+
+/* ---------- open the form ---------- */
+function src() {
+  const q = new URLSearchParams(location.search), out = new URLSearchParams();
+  ['name', 'date'].forEach(k => { if (q.get(k)) out.set(k, q.get(k)); });
+  const extra = out.toString();
+  return FORM_URL + (extra ? (FORM_URL.includes('?') ? '&' : '?') + extra : '');
+}
+function fail(t) { msg.textContent = t; retry.classList.remove('hidden'); splash.classList.remove('gone'); }
+function open() {
+  if (FORM_URL.startsWith('PASTE')) return fail('Form link not set yet. Please inform the office.');
+  if (!navigator.onLine) return fail('No internet connection. Connect and try again.');
+  msg.textContent = 'Opening Daily Work Log…'; retry.classList.add('hidden'); splash.classList.remove('gone');
+  clearTimeout(timer);
+  timer = setTimeout(() => fail('Taking longer than usual. Check your connection and try again.'), 25000);
+  frame.src = src();
+}
+frame.addEventListener('load', () => { if (frame.src) { clearTimeout(timer); splash.classList.add('gone'); } });
+retry.onclick = open;
+window.addEventListener('online', () => { if (!retry.classList.contains('hidden')) open(); });
+document.addEventListener('visibilitychange', () => {           // reopened after 30+ min → fresh date & lists
+  if (document.hidden) hiddenAt = Date.now();
+  else if (hiddenAt && Date.now() - hiddenAt > 30 * 60000) open();
+});
+
+/* ---------- phone notifications ---------- */
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const canPush = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window &&
+  !!window.firebase && !FIREBASE.apiKey.startsWith('PASTE');
+const store = {
+  get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+let formWin = null, name = '', busy = false;
+
+function bar(text, button) {
+  $('barTxt').textContent = text;
+  $('barOn').classList.toggle('hidden', !button);
+  $('bar').classList.remove('hidden');
+}
+function hideBar() { $('bar').classList.add('hidden'); }
+function skipped() { const t = store.get('wl_push_skip'); return t && Date.now() - t < 3 * 86400000; }
+
+function checkPush() {
+  if (!name || !formWin) return hideBar();
+  if (isIOS && !standalone) {
+    return skipped() ? hideBar() : bar('To get reminders as notifications, add this app to your Home Screen (Share → Add to Home Screen) and open it from there.', false);
+  }
+  if (!canPush || Notification.permission === 'denied') return hideBar();
+  if (Notification.permission === 'granted') { hideBar(); return sendToken(true); }   // keeps the phone linked to this name
+  skipped() ? hideBar() : bar('Get your work log reminders as notifications on this phone.', true);
+}
+
+async function sendToken(silent) {
+  if (busy) return;
+  busy = true;
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE);
+    const sw = await navigator.serviceWorker.ready;
+    const token = await firebase.messaging().getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: sw });
+    if (!token) throw new Error('no token');
+    const reg = store.get('wl_push') || {};
+    if (silent && reg.token === token && reg.name === name) return;
+    const device = isIOS ? 'iPhone / iPad' : /android/i.test(navigator.userAgent) ? 'Android' : 'Other';
+    formWin.postMessage({ type: 'wl-token', token: token, device: device, silent: silent }, '*');
+  } catch (e) {
+    if (!silent) bar('Could not turn on notifications. Check your connection and try again.', true);
+  } finally {
+    busy = false;
+  }
+}
+
+$('barOn').onclick = async () => {
+  const p = await Notification.requestPermission();      // must run straight from the tap (iPhone rule)
+  if (p !== 'granted') {
+    return bar(p === 'denied'
+      ? 'Notifications are blocked. Allow them for Work Log in your phone Settings to get reminders.'
+      : 'Notifications were not allowed. Tap Turn on to try again.', p !== 'denied');
+  }
+  bar('Turning on…', false);
+  sendToken(false);
+};
+$('barX').onclick = () => { store.set('wl_push_skip', Date.now()); hideBar(); };
+
+// messages from the form (Index.html inside the frame)
+window.addEventListener('message', e => {
+  const m = e.data || {};
+  if (!/\.googleusercontent\.com$/.test(new URL(e.origin).hostname) || typeof m.type !== 'string') return;
+  if (m.type === 'wl-ready' || m.type === 'wl-name') { formWin = e.source; name = m.name || ''; checkPush(); }
+  else if (m.type === 'wl-registered') { store.set('wl_push', { name: m.name, token: m.token }); hideBar(); }
+  else if (m.type === 'wl-reg-error') bar(m.error, true);
+});
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+open();
+</script>
+</body>
+</html>
