@@ -81,6 +81,7 @@
     </div>
     <div id="day" class="mut mt"></div>
     <button class="btn ghost hidden mt" id="retry" type="button">Try again</button>
+    <button class="btn ghost hidden mt" id="notifOn" type="button">🔔 Turn on notifications</button>
   </div>
 
   <div id="work" class="hidden">
@@ -161,7 +162,7 @@ function showDay(extra) {
 
 /* ---------- PIN ---------- */
 function needPin(text) {
-  user = null; $('work').classList.add('hidden'); hidePush();
+  user = null; $('work').classList.add('hidden'); hidePush(); notifBtn();
   $('pinBox').classList.remove('hidden'); $('pin').value = '';
   showDay(text ? '' : ' · enter your PIN to continue');
   if (text) $('day').textContent = text;
@@ -191,7 +192,7 @@ $('unlock').onclick = () => {
 $('pin').addEventListener('keydown', e => { if (e.key === 'Enter') $('unlock').click(); });
 $('out').onclick = () => {
   store.del('wl_user'); user = null; $('out').classList.add('hidden');
-  $('work').classList.add('hidden'); $('pinBox').classList.add('hidden'); hidePush();
+  $('work').classList.add('hidden'); $('pinBox').classList.add('hidden'); hidePush(); notifBtn();
   $('name').value = ''; dirty = false; lines = [blank()]; showDay();
 };
 
@@ -289,7 +290,7 @@ function load() {
 $('name').onchange = () => {
   const name = $('name').value; dirty = false; lines = [blank()];
   const saved = store.get('wl_user');
-  if (!name) { user = null; $('work').classList.add('hidden'); $('pinBox').classList.add('hidden'); return showDay(); }
+  if (!name) { user = null; $('work').classList.add('hidden'); $('pinBox').classList.add('hidden'); notifBtn(); return showDay(); }
   if (saved && saved.name === name) return unlock(name, saved.pin, true);
   needPin();
 };
@@ -338,7 +339,7 @@ async function start() {
     const hit = init.names.find(n => n.toLowerCase() === want) || '';
     sel.value = hit; lines = [blank()]; render();
     if (!hit) { showDay(); return; }
-    if (user && user.name === hit) { load(); return; }
+    if (user && user.name === hit) { load(); checkPush(); return; }
     if (saved && saved.name === hit) return unlock(hit, saved.pin, true);
     needPin();
   } catch (e) {
@@ -367,7 +368,14 @@ function bar(text, button) {
 function hidePush() { $('push').classList.add('hidden'); }
 function skipped() { const t = store.get('wl_push_skip'); return t && Date.now() - t < 3 * 86400000; }
 
+// "Turn on notifications" button: shown while logged in and notifications are not on yet
+function notifBtn() {
+  const off = (isIOS && !standalone) || (canPush && Notification.permission !== 'granted');
+  $('notifOn').classList.toggle('hidden', !user || !off);
+}
+
 function checkPush() {
+  notifBtn();
   if (!user) return hidePush();
   if (isIOS && !standalone) {
     return skipped() ? hidePush() : bar('To get reminders as notifications, add this app to your Home Screen (Share → Add to Home Screen) and open it from there.', false);
@@ -389,7 +397,7 @@ async function sendToken(silent) {
     if (silent && reg.token === token && reg.name === user.name) return;
     const device = isIOS ? 'iPhone / iPad' : /android/i.test(navigator.userAgent) ? 'Android' : 'Other';
     const r = await api('device', Object.assign(auth(), { token: token, device: device }));
-    store.set('wl_push', { name: r.name, token: token }); hidePush();
+    store.set('wl_push', { name: r.name, token: token }); hidePush(); notifBtn();
     if (!silent || r.test !== 'ok') toast(r.test === 'ok'
       ? 'Notifications turned on for ' + r.name + '.'
       : 'Turned on, but the test notification failed. Please inform the office.', r.test !== 'ok');
@@ -400,17 +408,25 @@ async function sendToken(silent) {
   }
 }
 
-$('pushOn').onclick = async () => {
+async function askPush() {
   const p = await Notification.requestPermission();      // must run straight from the tap (iPhone rule)
   if (p !== 'granted') {
     return bar(p === 'denied'
-      ? 'Notifications are blocked. Allow them for Work Log in your phone Settings to get reminders.'
+      ? 'Notifications are blocked. Allow them for Work Log in your phone Settings, then reopen the app.'
       : 'Notifications were not allowed. Tap Turn on to try again.', p !== 'denied');
   }
   bar('Turning on…', false);
   sendToken(false);
-};
+}
+
+$('pushOn').onclick = askPush;
 $('pushX').onclick = () => { store.set('wl_push_skip', Date.now()); hidePush(); };
+$('notifOn').onclick = () => {
+  store.set('wl_push_skip', 0);
+  if (isIOS && !standalone) return bar('To get reminders as notifications, add this app to your Home Screen (Share → Add to Home Screen) and open it from there.', false);
+  if (!canPush) return toast('Notifications are not supported on this phone or browser.', true);
+  askPush();
+};
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 start();
