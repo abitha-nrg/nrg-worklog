@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -13,47 +13,105 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
-  html, body { margin:0; height:100%; overflow:hidden; }
-  body { display:flex; flex-direction:column; box-sizing:border-box; padding-top:env(safe-area-inset-top,0px);
-    background:#f3f5f8; font-family:Arial,Helvetica,sans-serif; color:#1d2733; }
-  #top { position:fixed; top:0; left:0; right:0; height:env(safe-area-inset-top,0px); background:#1F4E78; z-index:2; }
-  #wrap { flex:1; min-height:0; }
-  iframe { width:100%; height:100%; border:0; display:block; }
-  #bar { display:flex; align-items:center; gap:10px; background:#fff; border-top:1px solid #d9dee5; font-size:13px;
-    padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px)); }
-  #bar p { margin:0; flex:1; line-height:1.35; }
-  #bar .on { border:0; border-radius:6px; padding:9px 14px; font:inherit; font-weight:bold; background:#1F4E78; color:#fff; cursor:pointer; white-space:nowrap; }
-  #bar .x { border:0; background:none; color:#6b7684; font-size:18px; padding:4px 6px; cursor:pointer; }
-  #splash { position:fixed; inset:0; background:#1F4E78; color:#fff; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; gap:14px; z-index:3; transition:opacity .3s; text-align:center; padding:24px; }
-  #splash img { width:88px; height:88px; border-radius:20px; }
-  #splash p { margin:0; font-size:14px; opacity:.85; }
-  #splash button { margin-top:6px; border:0; border-radius:6px; padding:10px 20px; font:inherit; font-weight:bold;
-    background:#fff; color:#1F4E78; cursor:pointer; }
-  .gone { opacity:0; pointer-events:none; }
+  :root { --pri:#1F4E78; --bg:#f3f5f8; --card:#fff; --line:#d9dee5; --txt:#1d2733; --mut:#6b7684; --err:#C00000; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Arial,Helvetica,sans-serif; background:var(--bg); color:var(--txt); font-size:14px;
+    padding-bottom:env(safe-area-inset-bottom,0px); }
+  header { background:var(--pri); color:#fff; padding:calc(14px + env(safe-area-inset-top,0px)) 16px 14px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  header h1 { margin:0; font-size:18px; }
+  header p { margin:2px 0 0; font-size:12px; opacity:.85; }
+  header button { border:1px solid rgba(255,255,255,.6); background:none; color:#fff; border-radius:6px; padding:6px 10px; font:inherit; font-size:12px; cursor:pointer; }
+  main { max-width:760px; margin:0 auto; padding:14px 14px 90px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px; margin-bottom:12px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; }
+  .row > .fld { flex:1 1 200px; }
+  .fld { display:block; font-size:12px; color:var(--mut); font-weight:bold; }
+  .mt { margin-top:10px; }
+  select, input, textarea { width:100%; margin-top:4px; padding:9px; border:1px solid var(--line); border-radius:6px;
+    font:inherit; font-size:16px; font-weight:normal; background:#fff; color:var(--txt); }
+  textarea { min-height:64px; resize:vertical; }
+  .seg { display:flex; margin-top:4px; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  .seg button { flex:1; border:0; padding:9px; background:#fff; cursor:pointer; font:inherit; color:var(--txt); }
+  .seg button + button { border-left:1px solid var(--line); }
+  .seg button.on { background:var(--pri); color:#fff; }
+  .line { position:relative; border-left:4px solid var(--pri); }
+  .line h3 { margin:0 0 8px; font-size:13px; color:var(--pri); }
+  .rm { position:absolute; top:10px; right:10px; border:0; background:none; color:var(--err); cursor:pointer; font-size:13px; }
+  .btn { border:0; border-radius:6px; padding:10px 16px; font:inherit; font-weight:bold; cursor:pointer; }
+  .btn.pri { background:var(--pri); color:#fff; width:100%; }
+  .btn.ghost { background:#fff; border:1px solid var(--pri); color:var(--pri); margin:0 6px 6px 0; }
+  .btn:disabled { opacity:.5; cursor:default; }
+  .bar { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+  .note { background:#fff6d6; border:1px solid #f0d77a; border-radius:6px; padding:8px 10px; font-size:13px; margin-bottom:12px; }
+  .scroll { overflow-x:auto; margin-top:8px; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th, td { border:1px solid var(--line); padding:5px; text-align:left; vertical-align:top; }
+  th { background:#eef2f7; }
+  .mut { color:var(--mut); font-size:12px; }
+  .miss { border-color:var(--err) !important; box-shadow:0 0 0 1px var(--err); }
+  .pin { display:flex; gap:10px; align-items:flex-end; margin-top:10px; }
+  .pin input { letter-spacing:.4em; max-width:150px; }
+  .pin .btn { width:auto; }
   .hidden { display:none !important; }
-  @media (prefers-reduced-motion: reduce) { #splash { transition:none; } }
+  #toast { position:fixed; left:50%; bottom:calc(80px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); background:#222; color:#fff;
+    padding:10px 16px; border-radius:6px; display:none; max-width:90%; z-index:9; }
+  #toast.err { background:var(--err); }
+  #push { position:fixed; left:0; right:0; bottom:0; display:flex; align-items:center; gap:10px; background:#fff; border-top:1px solid var(--line);
+    font-size:13px; padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px)); z-index:5; }
+  #push p { margin:0; flex:1; line-height:1.35; }
+  #push .x { border:0; background:none; color:var(--mut); font-size:18px; padding:4px 6px; cursor:pointer; }
+  #push .btn { width:auto; white-space:nowrap; }
 </style>
 </head>
 <body>
-<div id="top"></div>
-<div id="wrap"><iframe id="app" title="Daily Work Log" allow="clipboard-write"></iframe></div>
-<div id="bar" class="hidden">
-  <p id="barTxt"></p>
-  <button id="barOn" class="on" type="button">Turn on</button>
-  <button id="barX" class="x" type="button" aria-label="Not now">✕</button>
+<header>
+  <div><h1>Daily Work Log</h1><p>N.R.G. Associates</p></div>
+  <button id="out" class="hidden" type="button">Switch user</button>
+</header>
+<main>
+  <div class="card">
+    <div class="row">
+      <label class="fld">Name<select id="name"><option value="">Loading…</option></select></label>
+      <label class="fld">Date<input type="date" id="date"></label>
+    </div>
+    <div id="pinBox" class="pin hidden">
+      <label class="fld" style="flex:1">PIN<input id="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" placeholder="••••"></label>
+      <button class="btn pri" id="unlock" type="button">Open</button>
+    </div>
+    <div id="day" class="mut mt"></div>
+    <button class="btn ghost hidden mt" id="retry" type="button">Try again</button>
+  </div>
+
+  <div id="work" class="hidden">
+    <div id="doneBox" class="card hidden">
+      <div class="bar" style="margin:0"><b>Already logged for this date</b><span id="doneTot" class="mut"></span></div>
+      <div class="scroll"><table id="doneTbl"></table></div>
+    </div>
+
+    <div id="copyNote" class="note hidden"></div>
+    <div id="lines"></div>
+
+    <div class="bar">
+      <div><button class="btn ghost" id="add" type="button">+ Add line</button><button class="btn ghost hidden" id="copy" type="button"></button></div>
+      <span>Total: <b id="tot">0:00</b> hrs</span>
+    </div>
+    <button class="btn pri" id="save" type="button">Submit</button>
+    <p class="mut" style="text-align:center">Entries are saved straight into your own Daily Report sheet.</p>
+  </div>
+</main>
+<div id="push" class="hidden">
+  <p id="pushTxt"></p>
+  <button id="pushOn" class="btn pri" type="button">Turn on</button>
+  <button id="pushX" class="x" type="button" aria-label="Not now">✕</button>
 </div>
-<div id="splash">
-  <img src="icon-192.png" alt="">
-  <p id="msg">Opening Daily Work Log…</p>
-  <button id="retry" class="hidden" type="button">Try again</button>
-</div>
+<div id="toast"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script>
 /* ===================== Paste your values here ===================== */
-const FORM_URL = 'https://script.google.com/macros/s/AKfycbxU8X_C1h2hSuYiP3Af9PdgVMNSaVc8mazZhTrR6vPPIDiZsTvNV5tWblXUJ9DYiosG/exec';          // Apps Script /exec URL
+const API_URL = 'https://script.google.com/macros/s/AKfycbypTAuUTmSbhaGTY88SBheDRzz3RsBA3dANqvXPEfSBsx5npqTatst6ZpzP5cMGb9iA/exec';
 const FIREBASE = {                                    // Firebase > Project settings > Your apps > Config
   apiKey: 'AIzaSyDmkh8ZNOHQZHB1xTRrgc2rRiWz0sJ-ZtI', authDomain: 'nrg-work-log.firebaseapp.com', projectId: 'nrg-work-log',
   messagingSenderId: '335075031085', appId: '1:335075031085:web:90245bd74cb8cf6d37a0a4'
@@ -62,31 +120,236 @@ const VAPID_KEY = 'BDRf08BCRVwvXyKUAWEhN0y4BSQHJQvt1kHEID_GM_kVDRYKV8IwMXV6OKA-Q
 /* ================================================================== */
 
 const $ = id => document.getElementById(id);
-const frame = $('app'), splash = $('splash'), msg = $('msg'), retry = $('retry');
-let hiddenAt = 0, timer;
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const URLQ = new URLSearchParams(location.search);
+let lists = { entities: [], types: [] }, lines = [], last = null, dirty = false, seq = 0, busy = false, TIMES = [];
+let user = null, hiddenAt = 0;                        // user = { name, pin } once the PIN is accepted
 
-/* ---------- open the form ---------- */
-function src() {
-  const q = new URLSearchParams(location.search), out = new URLSearchParams();
-  ['name', 'date'].forEach(k => { if (q.get(k)) out.set(k, q.get(k)); });
-  const extra = out.toString();
-  return FORM_URL + (extra ? (FORM_URL.includes('?') ? '&' : '?') + extra : '');
+const hm = h => { const m = Math.round((Number(h) || 0) * 60); return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0'); };
+const dmy = ymd => ymd.split('-').reverse().join('-');
+const blank = () => ({ entity: '', type: '', desc: '', hrs: '', status: '' });
+const store = {
+  get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  del: k => { try { localStorage.removeItem(k); } catch (e) {} }
+};
+
+/* ---------- talk to Apps Script (no cookies, so any Google account mix works) ---------- */
+async function api(fn, body) {
+  if (!navigator.onLine) throw new Error('No internet connection. Connect and try again.');
+  let r;
+  try {
+    r = await fetch(API_URL, { method: 'POST', credentials: 'omit', redirect: 'follow',
+      body: JSON.stringify(Object.assign({ fn: fn }, body || {})) });
+  } catch (e) { throw new Error('Could not reach the server. Check your connection and try again.'); }
+  let j;
+  try { j = await r.json(); } catch (e) { throw new Error('Server is not responding properly. Please inform the office.'); }
+  if (!j.ok) { const e = new Error(j.error || 'Something went wrong.'); e.code = j.code; throw e; }
+  return j.data;
 }
-function fail(t) { msg.textContent = t; retry.classList.remove('hidden'); splash.classList.remove('gone'); }
-function open() {
-  if (FORM_URL.startsWith('PASTE')) return fail('Form link not set yet. Please inform the office.');
-  if (!navigator.onLine) return fail('No internet connection. Connect and try again.');
-  msg.textContent = 'Opening Daily Work Log…'; retry.classList.add('hidden'); splash.classList.remove('gone');
-  clearTimeout(timer);
-  timer = setTimeout(() => fail('Taking longer than usual. Check your connection and try again.'), 25000);
-  frame.src = src();
+const auth = () => ({ name: user.name, pin: user.pin });
+
+function toast(t, err) {
+  const el = $('toast'); el.textContent = t; el.className = err ? 'err' : ''; el.style.display = 'block';
+  clearTimeout(el._h); el._h = setTimeout(() => el.style.display = 'none', err ? 6000 : 4000);
 }
-frame.addEventListener('load', () => { if (frame.src) { clearTimeout(timer); splash.classList.add('gone'); } });
-retry.onclick = open;
-window.addEventListener('online', () => { if (!retry.classList.contains('hidden')) open(); });
+
+function showDay(extra) {
+  const v = $('date').value;
+  $('day').textContent = v ? DAYS[new Date(v + 'T12:00:00').getDay()] + ', ' + dmy(v) + (extra || '') : (extra || '');
+}
+
+/* ---------- PIN ---------- */
+function needPin(text) {
+  user = null; $('work').classList.add('hidden'); hidePush();
+  $('pinBox').classList.remove('hidden'); $('pin').value = '';
+  showDay(text ? '' : ' · enter your PIN to continue');
+  if (text) $('day').textContent = text;
+  setTimeout(() => $('pin').focus(), 50);
+}
+
+async function unlock(name, pin, silent) {
+  $('unlock').disabled = true; showDay(' · checking…');
+  try {
+    const r = await api('login', { name: name, pin: pin });
+    user = { name: r.name, pin: pin };
+    store.set('wl_user', user);
+    $('pinBox').classList.add('hidden'); $('out').classList.remove('hidden'); $('work').classList.remove('hidden');
+    load(); checkPush();
+  } catch (e) {
+    if (e.code === 'pin') { store.del('wl_user'); needPin(silent ? '' : e.message); if (!silent) toast(e.message, true); }
+    else { showDay(); toast(e.message, true); if (silent) needPin(); }
+  } finally { $('unlock').disabled = false; }
+}
+
+$('unlock').onclick = () => {
+  const name = $('name').value, pin = $('pin').value.trim();
+  if (!name) return toast('Select your name.', true);
+  if (!pin) return toast('Enter your PIN.', true);
+  unlock(name, pin, false);
+};
+$('pin').addEventListener('keydown', e => { if (e.key === 'Enter') $('unlock').click(); });
+$('out').onclick = () => {
+  store.del('wl_user'); user = null; $('out').classList.add('hidden');
+  $('work').classList.add('hidden'); $('pinBox').classList.add('hidden'); hidePush();
+  $('name').value = ''; dirty = false; lines = [blank()]; showDay();
+};
+
+/* ---------- form ---------- */
+function fill(sel, arr, val, ph) {
+  sel.add(new Option(ph, ''));
+  arr.forEach(x => sel.add(new Option(x, x)));
+  sel.value = val;
+}
+
+function render() {
+  const box = $('lines'); box.innerHTML = '';
+  lines.forEach((l, i) => {
+    if (l.entity && !lists.entities.includes(l.entity)) l.entity = '';
+    if (l.type && !lists.types.includes(l.type)) l.type = '';
+    if (l.hrs !== '' && !TIMES.includes(Number(l.hrs))) l.hrs = '';
+    const c = document.createElement('div'); c.className = 'card line';
+    c.innerHTML = `<h3>Line ${i + 1}</h3>${lines.length > 1 ? '<button class="rm" type="button">✕ Remove</button>' : ''}
+      <div class="row"><label class="fld">Entity<select data-k="entity"></select></label>
+        <label class="fld">Type of Work<select data-k="type"></select></label></div>
+      <label class="fld mt">Description of the Work<textarea data-k="desc" maxlength="2000" placeholder="What did you work on?"></textarea></label>
+      <div class="row mt"><label class="fld">Time (Hrs)<select data-k="hrs"></select></label>
+        <div class="fld">Status<div class="seg"><button type="button" data-s="Completed">Completed</button><button type="button" data-s="WIP">WIP</button></div></div></div>`;
+    fill(c.querySelector('[data-k=entity]'), lists.entities, l.entity, 'Select entity');
+    fill(c.querySelector('[data-k=type]'), lists.types, l.type, 'Select type of work');
+    const hs = c.querySelector('[data-k=hrs]');
+    hs.add(new Option('Select time', ''));
+    TIMES.forEach(t => hs.add(new Option(hm(t), String(t))));
+    hs.value = l.hrs === '' ? '' : String(Number(l.hrs));
+    c.querySelector('textarea').value = l.desc;
+
+    c.querySelectorAll('[data-k]').forEach(el => {
+      el.addEventListener(el.tagName === 'TEXTAREA' ? 'input' : 'change', () => {
+        l[el.dataset.k] = el.value; dirty = true; el.classList.remove('miss'); total();
+      });
+    });
+    c.querySelectorAll('[data-s]').forEach(b => {
+      b.classList.toggle('on', l.status === b.dataset.s);
+      b.onclick = () => {
+        l.status = b.dataset.s; dirty = true;
+        c.querySelectorAll('[data-s]').forEach(x => x.classList.toggle('on', x === b));
+        c.querySelector('.seg').classList.remove('miss');
+      };
+    });
+    const rm = c.querySelector('.rm');
+    if (rm) rm.onclick = () => { lines.splice(i, 1); dirty = true; render(); };
+    box.appendChild(c);
+  });
+  total();
+}
+
+function total() { $('tot').textContent = hm(lines.reduce((a, l) => a + (Number(l.hrs) || 0), 0)); }
+
+function showDone(done) {
+  const box = $('doneBox'), tb = $('doneTbl');
+  box.classList.toggle('hidden', !done.length);
+  tb.innerHTML = '';
+  if (!done.length) return;
+  const head = tb.insertRow();
+  ['Entity', 'Type of Work', 'Description', 'Time', 'Status'].forEach(h => { const th = document.createElement('th'); th.textContent = h; head.appendChild(th); });
+  done.forEach(r => {
+    const tr = tb.insertRow();
+    [r.entity, r.type, r.desc, r.hrs === '' ? '' : hm(r.hrs), r.status].forEach(v => tr.insertCell().textContent = v);
+  });
+  $('doneTot').textContent = done.length + ' line(s) · ' + hm(done.reduce((a, r) => a + (Number(r.hrs) || 0), 0)) + ' hrs';
+}
+
+function copyLast() {
+  if (!last) return;
+  const rows = last.rows.map(r => Object.assign({}, r));
+  const empty = lines.every(l => !l.entity && !l.type && !l.desc && l.hrs === '' && !l.status);
+  lines = empty ? rows : lines.concat(rows);
+  dirty = true; render();
+  $('copyNote').textContent = 'Copied ' + rows.length + ' line(s) from ' + dmy(last.date) + '. Edit or remove them before submitting.';
+  $('copyNote').classList.remove('hidden');
+}
+
+function load() {
+  const date = $('date').value, my = ++seq;
+  $('doneBox').classList.add('hidden'); $('copyNote').classList.add('hidden'); $('copy').classList.add('hidden');
+  if (!user || !date) { showDay(); return; }
+  showDay(' · loading…');
+  api('day', Object.assign(auth(), { date: date })).then(r => {
+    if (my !== seq) return;
+    lists = r.lists; last = r.last; showDay(); showDone(r.done);
+    if (!dirty) {
+      lines = [blank()];
+      if (!r.done.length && last) { render(); copyLast(); dirty = false; return; }
+    }
+    if (last) { $('copy').textContent = 'Copy from ' + dmy(last.date); $('copy').classList.remove('hidden'); }
+    render();
+  }).catch(e => { if (my !== seq) return; if (e.code === 'pin') { store.del('wl_user'); needPin(e.message); } else { showDay(); toast(e.message, true); } });
+}
+
+$('name').onchange = () => {
+  const name = $('name').value; dirty = false; lines = [blank()];
+  const saved = store.get('wl_user');
+  if (!name) { user = null; $('work').classList.add('hidden'); $('pinBox').classList.add('hidden'); return showDay(); }
+  if (saved && saved.name === name) return unlock(name, saved.pin, true);
+  needPin();
+};
+$('date').onchange = load;
+$('add').onclick = () => { lines.push(blank()); dirty = true; render(); };
+$('copy').onclick = copyLast;
+
+$('save').onclick = () => {
+  if (busy || !user) return;
+  const date = $('date').value;
+  if (!date) return toast('Pick a date.', true);
+  let bad = 0;
+  document.querySelectorAll('.line').forEach((c, i) => {
+    const l = lines[i];
+    ['entity', 'type', 'desc', 'hrs'].forEach(k => {
+      if (!String(l[k]).trim()) { c.querySelector('[data-k=' + k + ']').classList.add('miss'); bad++; }
+    });
+    if (!l.status) { c.querySelector('.seg').classList.add('miss'); bad++; }
+  });
+  if (bad) return toast('Fill all the highlighted fields.', true);
+
+  busy = true; $('save').disabled = true; $('save').textContent = 'Saving…';
+  api('submit', Object.assign(auth(), { date: date, lines: lines.map(l => Object.assign({}, l, { hrs: Number(l.hrs) })) }))
+    .then(r => {
+      toast('Saved ' + r.saved + ' line(s). Total for ' + dmy(date) + ': ' + hm(r.dayHrs) + ' hrs.');
+      dirty = false; lines = [blank()]; render(); load();
+    })
+    .catch(e => { if (e.code === 'pin') { store.del('wl_user'); needPin(e.message); } toast(e.message, true); })
+    .finally(() => { busy = false; $('save').disabled = false; $('save').textContent = 'Submit'; });
+};
+
+/* ---------- start ---------- */
+async function start() {
+  $('retry').classList.add('hidden'); $('day').textContent = 'Loading…';
+  try {
+    const init = await api('init');
+    TIMES = []; for (let m = 15; m <= init.maxHrs * 60; m += 15) TIMES.push(m / 60);
+    const sel = $('name'), keep = sel.value; sel.innerHTML = '';
+    sel.add(new Option('Select your name', ''));
+    init.names.forEach(n => sel.add(new Option(n, n)));
+    const d = $('date'), qd = URLQ.get('date') || '';
+    d.min = init.minDate; d.max = init.today;
+    d.value = qd && qd >= init.minDate && qd <= init.today ? qd : (d.value && d.value >= init.minDate && d.value <= init.today ? d.value : init.today);
+    const saved = store.get('wl_user');
+    const want = (URLQ.get('name') || keep || (saved && saved.name) || '').toLowerCase();
+    const hit = init.names.find(n => n.toLowerCase() === want) || '';
+    sel.value = hit; lines = [blank()]; render();
+    if (!hit) { showDay(); return; }
+    if (user && user.name === hit) { load(); return; }
+    if (saved && saved.name === hit) return unlock(hit, saved.pin, true);
+    needPin();
+  } catch (e) {
+    $('day').textContent = e.message; $('retry').classList.remove('hidden');
+  }
+}
+$('retry').onclick = start;
+window.addEventListener('online', () => { if (!$('retry').classList.contains('hidden')) start(); });
 document.addEventListener('visibilitychange', () => {           // reopened after 30+ min → fresh date & lists
   if (document.hidden) hiddenAt = Date.now();
-  else if (hiddenAt && Date.now() - hiddenAt > 30 * 60000) open();
+  else if (hiddenAt && Date.now() - hiddenAt > 30 * 60000 && !dirty) start();
 });
 
 /* ---------- phone notifications ---------- */
@@ -94,50 +357,50 @@ const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platfo
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const canPush = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window &&
   !!window.firebase && !FIREBASE.apiKey.startsWith('PASTE');
-const store = {
-  get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
-  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-};
-let formWin = null, name = '', busy = false;
+let pushBusy = false;
 
 function bar(text, button) {
-  $('barTxt').textContent = text;
-  $('barOn').classList.toggle('hidden', !button);
-  $('bar').classList.remove('hidden');
+  $('pushTxt').textContent = text;
+  $('pushOn').classList.toggle('hidden', !button);
+  $('push').classList.remove('hidden');
 }
-function hideBar() { $('bar').classList.add('hidden'); }
+function hidePush() { $('push').classList.add('hidden'); }
 function skipped() { const t = store.get('wl_push_skip'); return t && Date.now() - t < 3 * 86400000; }
 
 function checkPush() {
-  if (!name || !formWin) return hideBar();
+  if (!user) return hidePush();
   if (isIOS && !standalone) {
-    return skipped() ? hideBar() : bar('To get reminders as notifications, add this app to your Home Screen (Share → Add to Home Screen) and open it from there.', false);
+    return skipped() ? hidePush() : bar('To get reminders as notifications, add this app to your Home Screen (Share → Add to Home Screen) and open it from there.', false);
   }
-  if (!canPush || Notification.permission === 'denied') return hideBar();
-  if (Notification.permission === 'granted') { hideBar(); return sendToken(true); }   // keeps the phone linked to this name
-  skipped() ? hideBar() : bar('Get your work log reminders as notifications on this phone.', true);
+  if (!canPush || Notification.permission === 'denied') return hidePush();
+  if (Notification.permission === 'granted') { hidePush(); return sendToken(true); }   // keeps the phone linked to this name
+  skipped() ? hidePush() : bar('Get your work log reminders as notifications on this phone.', true);
 }
 
 async function sendToken(silent) {
-  if (busy) return;
-  busy = true;
+  if (pushBusy || !user) return;
+  pushBusy = true;
   try {
     if (!firebase.apps.length) firebase.initializeApp(FIREBASE);
     const sw = await navigator.serviceWorker.ready;
     const token = await firebase.messaging().getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: sw });
     if (!token) throw new Error('no token');
     const reg = store.get('wl_push') || {};
-    if (silent && reg.token === token && reg.name === name) return;
+    if (silent && reg.token === token && reg.name === user.name) return;
     const device = isIOS ? 'iPhone / iPad' : /android/i.test(navigator.userAgent) ? 'Android' : 'Other';
-    formWin.postMessage({ type: 'wl-token', token: token, device: device, silent: silent }, '*');
+    const r = await api('device', Object.assign(auth(), { token: token, device: device }));
+    store.set('wl_push', { name: r.name, token: token }); hidePush();
+    if (!silent || r.test !== 'ok') toast(r.test === 'ok'
+      ? 'Notifications turned on for ' + r.name + '.'
+      : 'Turned on, but the test notification failed. Please inform the office.', r.test !== 'ok');
   } catch (e) {
-    if (!silent) bar('Could not turn on notifications. Check your connection and try again.', true);
+    if (!silent) bar(e.code ? e.message : 'Could not turn on notifications. Check your connection and try again.', true);
   } finally {
-    busy = false;
+    pushBusy = false;
   }
 }
 
-$('barOn').onclick = async () => {
+$('pushOn').onclick = async () => {
   const p = await Notification.requestPermission();      // must run straight from the tap (iPhone rule)
   if (p !== 'granted') {
     return bar(p === 'denied'
@@ -147,19 +410,10 @@ $('barOn').onclick = async () => {
   bar('Turning on…', false);
   sendToken(false);
 };
-$('barX').onclick = () => { store.set('wl_push_skip', Date.now()); hideBar(); };
-
-// messages from the form (Index.html inside the frame)
-window.addEventListener('message', e => {
-  const m = e.data || {};
-  if (!/\.googleusercontent\.com$/.test(new URL(e.origin).hostname) || typeof m.type !== 'string') return;
-  if (m.type === 'wl-ready' || m.type === 'wl-name') { formWin = e.source; name = m.name || ''; checkPush(); }
-  else if (m.type === 'wl-registered') { store.set('wl_push', { name: m.name, token: m.token }); hideBar(); }
-  else if (m.type === 'wl-reg-error') bar(m.error, true);
-});
+$('pushX').onclick = () => { store.set('wl_push_skip', Date.now()); hidePush(); };
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
-open();
+start();
 </script>
 </body>
 </html>
